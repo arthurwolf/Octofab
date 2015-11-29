@@ -38,7 +38,9 @@ for my $script ( $root->look_down( _tag => "script", src => qr/static/ ) ){
 for my $style ( $root->look_down( _tag => "link", href => qr/webassets/ )){
     # Get the filename 
     my $src = $style->attr("href");
-   
+ 
+    print $style->as_HTML(), "\n";
+
     # Remove the href attribute
     $style->attr( href => undef );
 
