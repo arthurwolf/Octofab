@@ -2,7 +2,7 @@
 use strict;
 use WWW::Mechanize;
 use HTML::TreeBuilder;
-use Slurp;
+use File::Slurp;
 
 # Step 0, set context
 my $octoprint = "http://localhost:5000";
@@ -39,8 +39,6 @@ for my $style ( $root->look_down( _tag => "link", href => qr/webassets/ )){
     # Get the filename 
     my $src = $style->attr("href");
  
-    print $style->as_HTML(), "\n";
-
     # Remove the href attribute
     $style->attr( href => undef );
 
@@ -59,7 +57,7 @@ for my $style ( $root->look_down( _tag => "link", href => qr/webassets/ )){
 
 for my $jsfile ( split("\n", `ls src/js/*`) ){
     # Get the file's content
-    my $content = slurp($jsfile);
+    my $content = read_file($jsfile);
 
     # Make the new tag
     my $tag = HTML::Element->new('script', type => "text/javascript");
@@ -73,9 +71,11 @@ for my $jsfile ( split("\n", `ls src/js/*`) ){
 }
 
 # Final step, dump the whole file
-print $root->as_HTML();
+#write_file('test.html', $root->as_HTML());
+print $root->as_HTML('', '    '), "\n";
 
-
+# Tidy the file
+#system("tidy -i -utf8 -q -m test.html");
 
 
 
