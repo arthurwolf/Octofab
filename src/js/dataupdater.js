@@ -1,5 +1,9 @@
 var global_sockjs;
 
+
+var blob = new Blob([document.querySelector('#inlineworker').textContent]);
+GCODE_WORKER = window.URL.createObjectURL(blob);
+
 function SockJS(uri, what, options){
     global_sockjs = this;
     console.log(this);
