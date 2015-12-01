@@ -20,6 +20,8 @@ my @lines = split("\n", $mech->content);
 # Step 3, find every tag to replace
 my @scripts_inlined;
 for my $may_be_a_script ( @lines ){
+
+
     if( $may_be_a_script =~ m{script.*static} ){
         # Get the URL for this script
         my $url = $octoprint . HTML::TreeBuilder->new_from_content( $may_be_a_script )->look_down( _tag => "script", src => qr/static/ )->attr("src");
@@ -75,10 +77,20 @@ for my $may_be_a_script ( @lines ){
     }
 }
 
+my @images_relocated;
+for my $line ( @scripts_inlined ){
+    while( $line =~ s/(url[\(\"\']+\.\.(.+?)[\"\'\)]+)/url(\/sd\/static$2)/gc ){} 
+    while( $line =~ s/(background-image:[\(\"\']+\.\.(.+?)[\"\)\']+)/background-image:'\/sd\/static$2')/gc ){} 
+    while( $line =~ s/\?v=3\.2\.1//gc ){}
+    $line =~ s/href=\"\/static\//href=\".\//gm;
+    push @images_relocated, $line;
+}
+
+
 # Final step, dump the whole file
 open( my $fh, '>', 'index.html' );
 binmode $fh, ':encoding(UTF-8)';
-print $fh join("\n", @scripts_inlined);
+print $fh join("\n", @images_relocated);
 close $fh;
 
 system("python smoothie-upload.py index.html 192.168.0.18");
