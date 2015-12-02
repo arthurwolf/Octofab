@@ -82,6 +82,8 @@ for my $line ( @scripts_inlined ){
     while( $line =~ s/(url[\(\"\']+\.\.(.+?)[\"\'\)]+)/url(\/sd\/static$2)/gc ){} 
     while( $line =~ s/(background-image:[\(\"\']+\.\.(.+?)[\"\)\']+)/background-image:'\/sd\/static$2')/gc ){} 
     while( $line =~ s/\?v=3\.2\.1//gc ){}
+    #  url: API_BASEURL + "files/sdcard",
+    $line =~ s/API_BASEURL\s\+\s\"files\/sdcard\"/\"\/upload\"/gm; 
     $line =~ s/href=\"\/static\//href=\".\//gm;
     push @images_relocated, $line;
 }

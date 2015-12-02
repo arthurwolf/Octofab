@@ -14977,7 +14977,7 @@ $(function() {
 
             function enable_sd_dropzone() {
                 $("#gcode_upload_sd").fileupload({
-                    url: API_BASEURL + "files/sdcard",
+                    url: "/upload",
                     dataType: "json",
                     dropZone: $("#drop_sd"),
                     done: gcode_upload_done,
@@ -14988,7 +14988,7 @@ $(function() {
 
             function disable_sd_dropzone() {
                 $("#gcode_upload_sd").fileupload({
-                    url: API_BASEURL + "files/sdcard",
+                    url: "/upload",
                     dataType: "json",
                     dropZone: null,
                     done: gcode_upload_done,
@@ -23176,6 +23176,18 @@ $.ajaxPrefilter(function( options, originalOptions, jqXHR ){
                 smoothie.send_command(JSON.parse(options.data),next);
                 jqXHR.abort();
                 break;
+            case '/api/printer/tool':
+                smoothie.control_command(JSON.parse(options.data),next);
+                jqXHR.abort();
+                break;
+            case '/api/printer/printhead':
+                smoothie.control_command(JSON.parse(options.data),next);
+                jqXHR.abort();
+                break;
+            case '/api/printer/bed':
+                smoothie.control_command(JSON.parse(options.data),next);
+                jqXHR.abort();
+                break;
         }
 
         if( answer == '' ){ return; }
@@ -23188,6 +23200,8 @@ $.ajaxPrefilter(function( options, originalOptions, jqXHR ){
         jqXHR.abort();
     }else if(options.url.substr(0,8) == '/command' ){
         console.log("calling smoothie /command");
+     }else if(options.url.substr(0,7) == '/upload' ){
+        console.log("calling smoothie /upload");
     }else{
         console.log("unknown ajax call, ignoring " + options.url);
         jqXHR.abort();
@@ -23198,25 +23212,24 @@ $.ajaxPrefilter(function( options, originalOptions, jqXHR ){
 
 function Smoothie(){
 
+    var that = this;
     this.initialized = false;
     this.file_list = [];
     this.terminal_buffer = [];
+    this.current_temperatures = {};
 
     this.initialize = function(){
         if( !this.initialized ){
             this.initialized = true; 
-            console.log("initializing");
             this.on_page_loaded(); 
             this.log("Smoothie interface loaded");
         }
     };
 
     this.on_page_loaded = function(){
-        console.log("page loaded, trying to contact smoothie");
     };
 
     this.get_file_list = function(success_function){
-        var that = this;
         $.post('/command', "ls -s /sd/\n").done(function(data){
             that.file_list = []; 
             data.split("\n").map(function(item){
@@ -23237,7 +23250,6 @@ function Smoothie(){
             });
             answer = {"files": smoothie.file_list, "free": 0, "total": 0};
             success_function.call(undefined, answer);
-            console.log(answer);
         });
     };
 
@@ -23246,21 +23258,72 @@ function Smoothie(){
     };
 
     this.send_command = function(passed_data, next){
-        var that = this;
         var command = passed_data.command;
         that.terminal_buffer.push("Send: " + command); 
         $.post('/command', command + "\n").done(function(data){
-            that.terminal_buffer.push("Recv: " + data); 
-            console.log(that.terminal_buffer);
+            that.terminal_buffer.push("Recv: " + data.replace(/[\r\n]*$/g,"")); 
             that.update_octoprint();
         });
     };
 
     this.update_octoprint = function(){
         if( global_sockjs.callback == undefined ){ return; }
-        global_sockjs.callback.call(undefined,{"type":"message","data":{"current":{"logs":this.terminal_buffer,"offsets":{},"serverTime":1448892107.575042,"busyFiles":[],"messages":[],"job":{"file":{"origin":null,"date":null,"name":null,"size":null},"estimatedPrintTime":null,"averagePrintTime":null,"filament":null,"lastPrintTime":null},"temps":[],"state":{"text":"Operational","flags":{"operational":true,"paused":false,"printing":false,"sdReady":true,"error":false,"ready":true,"closedOrError":false}},"currentZ":null,"progress":{"completion":0,"printTimeLeft":null,"printTime":null,"filepos":null}}}});
+        var date = new Date();
+        global_sockjs.callback.call(undefined,{"type":"message","data":{"current":{"logs":this.terminal_buffer,"offsets":{},"serverTime":date.getTime(),"busyFiles":[],"messages":[],"job":{"file":{"origin":null,"date":null,"name":null,"size":null},"estimatedPrintTime":null,"averagePrintTime":null,"filament":null,"lastPrintTime":null},"temps":[that.current_temperatures],"state":{"text":"Operational","flags":{"operational":true,"paused":false,"printing":false,"sdReady":true,"error":false,"ready":true,"closedOrError":false}},"currentZ":null,"progress":{"completion":0,"printTimeLeft":null,"printTime":null,"filepos":null}}}});
         this.terminal_buffer = [];
     };
+
+    this.control_command = function( passed_data, next ){
+        console.log(passed_data);
+        var command = '';
+        var params =[];
+        switch( passed_data.command ){
+            case 'jog':
+                ['x','y','z'].forEach(function(axis){ if(passed_data[axis] != undefined){ params.push(axis.toUpperCase() + passed_data[axis]); } });
+                command = "G91\nG1 " + params.join(" ") + "\nG90";
+                break;
+            case 'extrude':
+                command = "M83\nG1 E" + passed_data.amount + "\nM82";
+                break;
+            case 'feedrate':
+                command = "M220 S" + passed_data.factor;
+                break;
+            case 'flowrate':
+                command = "M221 S" + passed_data.factor;
+                break;
+            case 'home':
+                passed_data.axes.forEach(function(axis){ params.push(axis.toUpperCase() + "0"); });
+                command = "G28 " + params.join(" ");
+                break;
+            case 'select':
+                break;
+            case 'target':
+                break;
+        } 
+        this.send_command({'command': command}, undefined); 
+    
+    };
+
+    this.update_tick = function(){
+        that.log("Send: M105");
+        $.post('/command', "M105\n").done(function(data){
+            that.log("Recv: " + data.replace(/[\r\n]*$/g,""));
+            that.current_temperatures = {};
+            data.split('@').forEach(function(reading){
+                var values = reading.split(/[\s\:\/]/);
+                if( values[1] == '' ){ return; }
+                var letter = values[1];
+                var temp   = values[2];
+                var target = values[4];
+                var name = {"T":"tool0","B":"bed"}[letter];
+                that.current_temperatures[name] = {"actual":temp, "target": target};
+            });
+            var date = new Date();
+            that.current_temperatures["time"] = date.getTime();
+            that.update_octoprint();
+        });
+    };
+    setInterval(function(){ that.update_tick(); }, 5000);
 
 }
 
