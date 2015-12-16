@@ -13,7 +13,7 @@ function SockJS(uri, what, options){
         this.callback = function (data) { _onmessage(data); }; 
         
         //console.log("false sockjs calls"); 
-        this.callback.call(undefined, {"type":"message","data":{"connected":{"display_version":"1.2.7 (master branch)","apikey":"A6977F02830F4154AD3B123F3A67FCB1","version":"1.2.7","branch":"master","plugin_hash":"f88be250e0099eeecbf10a90bb32fa4b"}}});
+        this.callback.call(undefined, {"type":"message","data":{"connected":{"display_version":DISPLAY_VERSION,"apikey":"A6977F02830F4154AD3B123F3A67FCB1","version":VERSION,"branch":BRANCH,"plugin_hash":"f88be250e0099eeecbf10a90bb32fa4b"}}});
 
         this.callback.call(undefined,{"type":"message","data":{"history":{"logs":[],"offsets":{},"serverTime":1448466981.314448,"messages":[],"state":{"text":"Offline","flags":{"operational":false,"paused":false,"printing":false,"sdReady":false,"error":false,"ready":false,"closedOrError":true}},"temps":[],"job":{"estimatedPrintTime":null,"filament":{"volume":null,"length":null},"file":{"origin":null,"date":null,"name":null,"size":null},"lastPrintTime":null},"currentZ":null,"progress":{"completion":null,"printTime":null,"filepos":null,"printTimeLeft":null}}}}); 
 
