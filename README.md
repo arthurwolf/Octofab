@@ -31,5 +31,13 @@ Run Octoprint
 
 ./venv/bin/octoprint
 
+# Future targets
+
+* https://github.com/cheton/cnc.js
+* Chilipeppr
+* Octocut
+* Laserweb
+
+
 
 
