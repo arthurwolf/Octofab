@@ -5,7 +5,6 @@ The basic process is : 
 * Grab the web interface off the internet or a local copy
 * Transform it so everything ( including templates, javascript, CSS ) is included into a single HTML file
 * Add a bit of javascript at the end that makes it compatible with Smoothie
-* 
 
 # Current targets
 
