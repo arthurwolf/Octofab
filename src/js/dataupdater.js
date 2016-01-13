@@ -219,6 +219,7 @@ function Smoothie(){
                 if( values[1] == '' ){ return; }
                 var letter = values[1];
                 var temp   = values[2];
+                if( temp == 'inf' ){ temp = -273.15; }
                 var target = values[4];
                 var name = {"T":"tool0","B":"bed"}[letter];
                 that.current_temperatures[name] = {"actual":temp, "target": target};

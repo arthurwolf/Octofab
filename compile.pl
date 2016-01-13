@@ -95,7 +95,7 @@ binmode $fh, ':encoding(UTF-8)';
 print $fh join("\n", @images_relocated);
 close $fh;
 
-system("python smoothie-upload.py index.html 192.168.0.18");
+system("python smoothie-upload.py index.html 192.168.0.20");
 
 
 
