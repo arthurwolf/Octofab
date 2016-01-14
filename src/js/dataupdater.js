@@ -7,6 +7,7 @@ GCODE_WORKER = window.URL.createObjectURL(blob);
 function SockJS(uri, what, options){
     global_sockjs = this;
     this.callback = undefined;
+    this.uploading = false;
 
     this.on_ajax_connect = function(){
         var _onmessage = this.onmessage;
@@ -107,6 +108,8 @@ $.ajaxPrefilter(function( options, originalOptions, jqXHR ){
         console.log("calling smoothie /command");
      }else if(options.url.substr(0,7) == '/upload' ){
         console.log("calling smoothie /upload");
+        jqXHR.abort();
+        smoothie.upload(options.files[0]);
     }else{
         console.log("unknown ajax call, ignoring " + options.url);
         jqXHR.abort();
@@ -231,10 +234,82 @@ function Smoothie(){
     };
     setInterval(function(){ that.update_tick(); }, 5000);
 
+    this.upload = function( file ) {
+
+        var reader = new FileReader();
+        reader.readAsBinaryString(file); // alternatively you can use readAsDataURL
+        reader.onloadend  = function(evt)
+        {
+            // create XHR instance
+            xhr = new XMLHttpRequest();
+
+            // send the file through POST
+            xhr.open("POST", '/upload', true);
+            xhr.setRequestHeader('X-Filename', file.name);
+
+            // make sure we have the sendAsBinary method on all browsers
+            XMLHttpRequest.prototype.mySendAsBinary = function(text){
+                var data = new ArrayBuffer(text.length);
+                var ui8a = new Uint8Array(data, 0);
+                for (var i = 0; i < text.length; i++) ui8a[i] = (text.charCodeAt(i) & 0xff);
+
+                if(typeof window.Blob == "function")
+                {
+                     var blob = new Blob([data]);
+                }else{
+                     var bb = new (window.MozBlobBuilder || window.WebKitBlobBuilder || window.BlobBuilder)();
+                     bb.append(data);
+                     var blob = bb.getBlob();
+                }
+
+                this.send(blob);
+            }
+
+            // let's track upload progress
+            var eventSource = xhr.upload || xhr;
+            eventSource.addEventListener("progress", function(e) {
+                // get percentage of how much of the current file has been sent
+                var position = e.position || e.loaded;
+                var total = e.totalSize || e.total;
+                var percentage = Math.round((position/total)*100);
+                $("#gcode_upload_progress .bar").css("width", percentage + "%");
+                $("#gcode_upload_progress .bar").text(gettext("Uploading ..."));
+                if (percentage >= 100) {
+                    $("#gcode_upload_progress").addClass("progress-striped").addClass("active");
+                    $("#gcode_upload_progress .bar").text(gettext("Saving ..."));
+                }
+
+            });
+
+            // state change observer - we need to know when and if the file was successfully uploaded
+            xhr.onreadystatechange = function(){
+                if(xhr.readyState == 4){
+                    if(xhr.status == 200){
+                        $("#gcode_upload_progress .bar").css("width", "0%");
+                        $("#gcode_upload_progress").removeClass("progress-striped").removeClass("active");
+                        $("#gcode_upload_progress .bar").text("Upload succesful");
+                    }else{
+                        $("#gcode_upload_progress .bar").css("width", "0%");
+                        $("#gcode_upload_progress").removeClass("progress-striped").removeClass("active");
+                        $("#gcode_upload_progress .bar").text("Upload error");
+                    }
+                }
+            };
+
+            // start sending
+            xhr.mySendAsBinary(evt.target.result);
+        };
+    };
+
+
 }
+
+
+
 
 smoothie = new Smoothie();
 smoothie.initialize();
 
 
+ 
 
