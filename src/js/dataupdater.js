@@ -126,6 +126,9 @@ function Smoothie(){
     this.terminal_buffer = [];
     this.current_temperatures = {};
 
+    // Cosmetic changes
+    $(".fileinput-button")[0].remove();
+
     this.initialize = function(){
         if( !this.initialized ){
             this.initialized = true; 
